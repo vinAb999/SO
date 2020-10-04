@@ -1,0 +1,73 @@
+import java.util.*;
+class Filosofo implements Runnable {
+    private Object talherEsquerdo;
+    private Object talherDireito;
+ 
+    public Filosofo(Object talherEsquerdo, Object talherDireito) {
+        this.talherEsquerdo = talherEsquerdo;
+        this.talherDireito = talherDireito;
+    }
+ 
+    @Override
+    public void run() {
+        try{
+			while(true){
+				pensar();
+				synchronized(talherEsquerdo){
+					pegarTalher("esquerdo");
+					synchronized(talherDireito){
+						pegarTalher("direito");
+						comer();
+						soltarTalher("direito");
+					}
+					soltarTalher("esquerdo");
+				}
+				pensar();
+			}
+		}catch(InterruptedException e){
+			Thread.currentThread().interrupt();
+			return;
+		}
+    }
+	 private void pensar() throws InterruptedException {
+        System.out.println(Thread.currentThread().getName() + " está pensando");
+        Thread.sleep(((int) (Math.random() * 100)));
+    }
+	private void comer() throws InterruptedException {
+        System.out.println(Thread.currentThread().getName() + " está comendo");
+        Thread.sleep(((int) (Math.random() * 100)));
+    }
+	private void pegarTalher(String talher) throws InterruptedException {
+        System.out.println(Thread.currentThread().getName() + " pegou o talher" + talher);
+        Thread.sleep(((int) (Math.random() * 100)));
+    }
+	private void soltarTalher(String talher) throws InterruptedException {
+        System.out.println(Thread.currentThread().getName() + " soltou o talher " + talher);
+        Thread.sleep(((int) (Math.random() * 100)));
+    }
+}
+public class Main{
+	public static void main(String[] args) throws Exception{
+    Scanner input = new Scanner(System.in);
+    int numeroFilosofos = input.nextInt();
+    input.nextLine();
+		final Filosofo[] filosofosID = new Filosofo[numeroFilosofos];
+		Object[] talheres = new Object[numeroFilosofos];
+		
+		for(int i = 0; i < numeroFilosofos; i++){
+			talheres[i] = new Object();
+		}
+		for(int i = 0; i < numeroFilosofos; i++){
+			Object talherEsquerdo = talheres[i];
+			Object talherDireito = talheres[(i+1)%numeroFilosofos];
+			if(i==filosofosID.length-1){
+				filosofosID[i] = new Filosofo(talherDireito, talherEsquerdo);
+
+			}else{
+				filosofosID[i] = new Filosofo(talherEsquerdo, talherDireito);
+			}
+			Thread t = new Thread(filosofosID[i], "Filosofo "+(i+1));
+			t.start();
+		}
+	}
+}
