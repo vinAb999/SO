@@ -5,11 +5,21 @@ class Filosofo implements Runnable {
 	private String estado;
     private Object talherEsquerdo;
     private Object talherDireito;
+	static Semaphore mutex;
+	static Filosofo[] filosofosID;
+	static Object[] talheres;
+	static Semaphore[] semaforosDosFilosofos; //equivalente ao f[] no video de fubica
+	static int numeroFilosofos;
  
-    public Filosofo(int id, Object talherEsquerdo) {
+    public Filosofo(int id, Object talherEsquerdo, Semaphore mutex, Filosofo[] filosofosID, Object[] talheres, Semaphore[] semaforosDosFilosofos, int numeroDeFilosofos) {
         this.estado = "pensando"; //todo filosofo inicia pensando
 		this.id = id;
 		this.talherEsquerdo = talherEsquerdo;
+		this.mutex = mutex;
+		this.filosofosID = filosofosID;
+		this.talherEsquerdo = talheres;
+		this.semaforosDosFilosofos = semaforosDosFilosofos;
+		this.numeroFilosofos = numeroDeFilosofos;
     }
  
     @Override
@@ -36,20 +46,20 @@ class Filosofo implements Runnable {
         Thread.sleep(((int) (Math.random() * 100)));
     }
 	private void pegarTalheres() throws InterruptedException {
-		mutex.down();
+		Main.mutex.down();
 		setEstado("com_fome");
 		if(!filosofosID[(getId()+1)%numeroFilosofos].getEstado().equals("comendo")//verifica estado do filosofo da direita
 			&& !filosofosID[(getId()-1)%numeroFilosofos].getEstado().equals("comendo") ){ //verifica estado do filosofo da esquerda
 			semaforosDosFilosofos[getId()-1].up();
 			setEstado("comendo");
 		}
-		mutex.up(); //liberar regiao critica
+		Main.mutex.up(); //liberar regiao critica
 		semaforosDosFilosofos[getId()-1].down();
         System.out.println(Thread.currentThread().getName() + " pegou talheres");
         Thread.sleep(((int) (Math.random() * 100)));
     }
 	private void soltarTalheres() throws InterruptedException {
-		mutex.down();
+		Main.mutex.down();
 		setEstado("pensando");
 		//verificar os estados dos filosofos da direita dele
 		if(filosofosID[(getId()+1)%numeroFilosofos].getEstado().equals("com_fome")
@@ -63,8 +73,8 @@ class Filosofo implements Runnable {
 			filosofosID[(getId()-1)%numeroFilosofos].setEstado("comendo");
 			semaforosDosFilosofos[(getId()-1)%numeroFilosofos].up();
 		}
-		mutex.up();
-        System.out.println(Thread.currentThread().getName() + " soltou os talheres " + talher);
+		Main.mutex.up();
+        System.out.println(Thread.currentThread().getName() + " soltou os talheres ");
         Thread.sleep(((int) (Math.random() * 100)));
     }
 	public int getId(){
@@ -88,11 +98,11 @@ class Filosofo implements Runnable {
 }
 public class Main{
 	//tentativa fracassada de criar objetos universais que a classe Filosofo possa usar
-	static final int numeroFilosofos = 6; //cenario com apenas 6 filosofos
-	static Semaphore mutex = new Semaphore(1);
-	static Filosofo[] filosofosID = new Filosofo[numeroFilosofos];
-	static Object[] talheres = new Object[numeroFilosofos];
-	static Semaphore[] semaforosDosFilosofos = new Semaphore[numeroFilosofos]; //equivalente ao f[] no video de fubica
+	public static final int numeroFilosofos = 6; //cenario com apenas 6 filosofos
+	public static Semaphore mutex = new Semaphore(1);
+	public static Filosofo[] filosofosID = new Filosofo[numeroFilosofos];
+	public static Object[] talheres = new Object[numeroFilosofos];
+	public static Semaphore[] semaforosDosFilosofos = new Semaphore[numeroFilosofos]; //equivalente ao f[] no video de fubica
 	
 	public static void main(String[] args) throws Exception{
 		for(int i = 0; i < numeroFilosofos; i++){
@@ -100,14 +110,15 @@ public class Main{
 		}
 		int i = 1;
 		for(Filosofo f:filosofosID){
-			f = new Filosofo(i, talheres[i-1]); //crio um filosofo
+			//Filosofo(int id, Object talherEsquerdo, Semaphore mutex, Filosofo[] filosofosID, Object[] talheres, Semaphore[] semaforosDosFilosofos, int numeroDeFilosofos) {
+			f = new Filosofo(i, talheres[i-1], mutex, filosofosID, talheres, semaforosDosFilosofos, numeroFilosofos); //crio um filosofo
 			if(i>1){ // para setar o talher a direita do anterior como sendo o talher a esquerda deste
 				filosofosID[i-1].setTalherDireito(talheres[i-1]);
 			}
 			i++;
 		}
 		for(Semaphore s:semaforosDosFilosofos){
-			s = 0; //todos os semaforos começam em 0
+			s.acquire(0); //todos os semaforos começam em 0
 		}
 		
 		//iniciar todos os filosofos como threads
