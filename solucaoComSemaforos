@@ -1,130 +1,64 @@
 import java.util.concurrent.Semaphore;
-import java.util.*;
-class Filosofo implements Runnable {
-	private int id;
-	private String estado;
-    private Object talherEsquerdo;
-    private Object talherDireito;
-	static Semaphore mutex;
-	static Filosofo[] filosofosID;
-	static Object[] talheres;
-	static Semaphore[] semaforosDosFilosofos; //equivalente ao f[] no video de fubica
-	static int numeroFilosofos;
- 
-    public Filosofo(int id, Object talherEsquerdo, Semaphore mutex, Filosofo[] filosofosID, Object[] talheres, Semaphore[] semaforosDosFilosofos, int numeroDeFilosofos) {
-        this.estado = "pensando"; //todo filosofo inicia pensando
-		this.id = id;
-		this.talherEsquerdo = talherEsquerdo;
-		this.mutex = mutex;
-		this.filosofosID = filosofosID;
-		this.talherEsquerdo = talheres;
-		this.semaforosDosFilosofos = semaforosDosFilosofos;
-		this.numeroFilosofos = numeroDeFilosofos;
-    }
- 
-    @Override
-    public void run() {
-        try{
-			while(true){
-				pensar();
-				pegarTalheres();
-				comer();
-				soltarTalheres();
-			}
-		}catch(InterruptedException e){
-			Thread.currentThread().interrupt();
-			return;
-		}
-    }
-	 private void pensar() throws InterruptedException {
-        System.out.println(Thread.currentThread().getName() + " está pensando");
-        Thread.sleep(((int) (Math.random() * 100)));
-    }
-	private void comer() throws InterruptedException {
-		setEstado("comendo");
-        System.out.println(Thread.currentThread().getName() + " está comendo");
-        Thread.sleep(((int) (Math.random() * 100)));
-    }
-	private void pegarTalheres() throws InterruptedException {
-		Main.mutex.down();
-		setEstado("com_fome");
-		if(!filosofosID[(getId()+1)%numeroFilosofos].getEstado().equals("comendo")//verifica estado do filosofo da direita
-			&& !filosofosID[(getId()-1)%numeroFilosofos].getEstado().equals("comendo") ){ //verifica estado do filosofo da esquerda
-			semaforosDosFilosofos[getId()-1].up();
-			setEstado("comendo");
-		}
-		Main.mutex.up(); //liberar regiao critica
-		semaforosDosFilosofos[getId()-1].down();
-        System.out.println(Thread.currentThread().getName() + " pegou talheres");
-        Thread.sleep(((int) (Math.random() * 100)));
-    }
-	private void soltarTalheres() throws InterruptedException {
-		Main.mutex.down();
-		setEstado("pensando");
-		//verificar os estados dos filosofos da direita dele
-		if(filosofosID[(getId()+1)%numeroFilosofos].getEstado().equals("com_fome")
-			&& !filosofosID[(getId()+2)%numeroFilosofos].getEstado().equals("comendo") ){
-			filosofosID[(getId()+1)%numeroFilosofos].setEstado("comendo");
-			semaforosDosFilosofos[(getId()+1)%numeroFilosofos].up();
-		}
-		//verificar os estados dos filosofos da esquerda dele
-		if(filosofosID[(getId()-1)%numeroFilosofos].getEstado().equals("com_fome") //a direita do filosofo
-			&& !filosofosID[(getId()-2)%numeroFilosofos].getEstado().equals("comendo") ){ //a direita da direita do filosofo
-			filosofosID[(getId()-1)%numeroFilosofos].setEstado("comendo");
-			semaforosDosFilosofos[(getId()-1)%numeroFilosofos].up();
-		}
-		Main.mutex.up();
-        System.out.println(Thread.currentThread().getName() + " soltou os talheres ");
-        Thread.sleep(((int) (Math.random() * 100)));
-    }
-	public int getId(){
-		return id;
-	}
-	public void setTalherDireito(Object talher){
-		 this.talherDireito = talherDireito;
-	}
-	public Object getTalherEsquerdo(){
-		 return talherEsquerdo;
-	}
-	public Object getTalherDireito(){
-		 return talherDireito;
-	}
-	public void setEstado(String estado){
-		this.estado = estado;
-	}
-	public String getEstado(){
-		return estado;
-	}
-}
-public class Main{
-	//tentativa fracassada de criar objetos universais que a classe Filosofo possa usar
-	public static final int numeroFilosofos = 6; //cenario com apenas 6 filosofos
-	public static Semaphore mutex = new Semaphore(1);
-	public static Filosofo[] filosofosID = new Filosofo[numeroFilosofos];
-	public static Object[] talheres = new Object[numeroFilosofos];
-	public static Semaphore[] semaforosDosFilosofos = new Semaphore[numeroFilosofos]; //equivalente ao f[] no video de fubica
+
+public class ComSemaforos2 {
+	private static final int numeroDeFilosofos = 5;
+	private static final int PENSANDO = 0;
+	private static final int COM_FOME = 1;
+	private static final int COMENDO = 2;
+	private static Semaphore mutex = new Semaphore(1);
+	private static Semaphore[] semaforosDosFilosofos = new Semaphore[numeroDeFilosofos];
+	private static int[] estadosDosFilosofos = new int[numeroDeFilosofos];
 	
-	public static void main(String[] args) throws Exception{
-		for(int i = 0; i < numeroFilosofos; i++){
-			talheres[i] = new Object(); //criando talheres
+	public static void filosofo(int i) throws InterruptedException {
+		while(true) {
+			pensar(i);
+			pegarTalheres(i);
+			comer(i);
+			soltarTalheres(i);
 		}
-		int i = 1;
-		for(Filosofo f:filosofosID){
-			//Filosofo(int id, Object talherEsquerdo, Semaphore mutex, Filosofo[] filosofosID, Object[] talheres, Semaphore[] semaforosDosFilosofos, int numeroDeFilosofos) {
-			f = new Filosofo(i, talheres[i-1], mutex, filosofosID, talheres, semaforosDosFilosofos, numeroFilosofos); //crio um filosofo
-			if(i>1){ // para setar o talher a direita do anterior como sendo o talher a esquerda deste
-				filosofosID[i-1].setTalherDireito(talheres[i-1]);
-			}
-			i++;
-		}
-		for(Semaphore s:semaforosDosFilosofos){
-			s.acquire(0); //todos os semaforos começam em 0
-		}
+	}
+	private static void pensar(int i) {
+		System.out.println("o filósofo "+ i+ " está pensando");
 		
-		//iniciar todos os filosofos como threads
-		for(int f = 0; f < numeroFilosofos; f++){
-			Thread t = new Thread(filosofosID[f], "Filosofo "+(f+1));
-			t.start();
+	}
+	private static void pegarTalheres(int i) throws InterruptedException {
+		mutex.acquire();
+		estadosDosFilosofos[i] = COM_FOME;
+		test(i);
+		mutex.release();
+		semaforosDosFilosofos[i].acquire();
+	}
+	private static void comer(int i) {
+		System.out.println("o filósofo " + i + " está comendo");
+	}
+	private static void soltarTalheres(int i) throws InterruptedException {
+		mutex.acquire();
+		estadosDosFilosofos[i] = PENSANDO;
+		int right = (i+1)%numeroDeFilosofos;
+		int left = (i+numeroDeFilosofos-1)%numeroDeFilosofos;
+		test(left);
+		test(right);
+		mutex.release();
+		semaforosDosFilosofos[i].acquire();
+	}
+	private static void test(int i) {
+		int left = (i+numeroDeFilosofos-1)%numeroDeFilosofos; //numero do filosofo a esquerda do filosofo i
+		int right = (i+1)%numeroDeFilosofos; //numero do filosofo a direita do filosofo i
+		if(estadosDosFilosofos[i] == COM_FOME && estadosDosFilosofos[left] != COMENDO && estadosDosFilosofos[right] != COMENDO) {
+			estadosDosFilosofos[i] = COMENDO;
+			semaforosDosFilosofos[i].release();
+		}
+	}
+	public static void mains(String[] args) {
+		for(int i = 0; i < numeroDeFilosofos;i++) {
+			estadosDosFilosofos[i] = PENSANDO;
+		}
+		for(int s = 0; s < numeroDeFilosofos; s++){
+			semaforosDosFilosofos[s] = new Semaphore(0);
+		}
+		for(int f = 0; f < numeroDeFilosofos; f++){
+			Thread t = new Thread(filosofo,"Filosofo "+(f+1));
+			t.filosofo(f);
 		}
 	}
 }
