@@ -57,8 +57,15 @@ public class ComSemaforos2 {
 			semaforosDosFilosofos[s] = new Semaphore(0);
 		}
 		for(int f = 0; f < numeroDeFilosofos; f++){
+			/*
+			 * A partir daqui fiquei na dúvida quanto a como iniciar as threads sem uma classe FILOSOFO.
+			 * O monitores, além de demorarem a responder, não foram muito elucidativos quando perguntei
+			 * como iniciar as threads. Quanto mais falavam, mais eu ficava confuso, então desisti de 
+			 * tentar fazer funcionar e espero conseguir alguma pontuação só pela tentativa
+			 */
 			Thread t = new Thread(filosofo,"Filosofo "+(f+1));
 			t.filosofo(f);
 		}
 	}
+
 }
