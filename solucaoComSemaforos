@@ -1,71 +1,82 @@
 import java.util.concurrent.Semaphore;
-
-public class ComSemaforos2 {
-	private static final int numeroDeFilosofos = 5;
-	private static final int PENSANDO = 0;
-	private static final int COM_FOME = 1;
-	private static final int COMENDO = 2;
-	private static Semaphore mutex = new Semaphore(1);
-	private static Semaphore[] semaforosDosFilosofos = new Semaphore[numeroDeFilosofos];
-	private static int[] estadosDosFilosofos = new int[numeroDeFilosofos];
-	
-	public static void filosofo(int i) throws InterruptedException {
-		while(true) {
-			pensar(i);
-			pegarTalheres(i);
-			comer(i);
-			soltarTalheres(i);
-		}
-	}
-	private static void pensar(int i) {
-		System.out.println("o filósofo "+ i+ " está pensando");
-		
-	}
-	private static void pegarTalheres(int i) throws InterruptedException {
-		mutex.acquire();
-		estadosDosFilosofos[i] = COM_FOME;
-		test(i);
-		mutex.release();
-		semaforosDosFilosofos[i].acquire();
-	}
-	private static void comer(int i) {
-		System.out.println("o filósofo " + i + " está comendo");
-	}
-	private static void soltarTalheres(int i) throws InterruptedException {
-		mutex.acquire();
-		estadosDosFilosofos[i] = PENSANDO;
-		int right = (i+1)%numeroDeFilosofos;
-		int left = (i+numeroDeFilosofos-1)%numeroDeFilosofos;
-		test(left);
-		test(right);
-		mutex.release();
-		semaforosDosFilosofos[i].acquire();
-	}
-	private static void test(int i) {
-		int left = (i+numeroDeFilosofos-1)%numeroDeFilosofos; //numero do filosofo a esquerda do filosofo i
-		int right = (i+1)%numeroDeFilosofos; //numero do filosofo a direita do filosofo i
-		if(estadosDosFilosofos[i] == COM_FOME && estadosDosFilosofos[left] != COMENDO && estadosDosFilosofos[right] != COMENDO) {
-			estadosDosFilosofos[i] = COMENDO;
-			semaforosDosFilosofos[i].release();
-		}
-	}
-	public static void mains(String[] args) {
-		for(int i = 0; i < numeroDeFilosofos;i++) {
-			estadosDosFilosofos[i] = PENSANDO;
-		}
-		for(int s = 0; s < numeroDeFilosofos; s++){
-			semaforosDosFilosofos[s] = new Semaphore(0);
-		}
-		for(int f = 0; f < numeroDeFilosofos; f++){
-			/*
-			 * A partir daqui fiquei na dúvida quanto a como iniciar as threads sem uma classe FILOSOFO.
-			 * O monitores, além de demorarem a responder, não foram muito elucidativos quando perguntei
-			 * como iniciar as threads. Quanto mais falavam, mais eu ficava confuso, então desisti de 
-			 * tentar fazer funcionar e espero conseguir alguma pontuação só pela tentativa
-			 */
-			Thread t = new Thread(filosofo,"Filosofo "+(f+1));
-			t.filosofo(f);
-		}
-	}
-
+public class Main {
+    public static class Filosofo implements Runnable {
+        private int index;
+        private int n;
+        private Semaphore[] forks;
+        public Filosofo(int index, Semaphore[] forks) {
+            this.index = index;
+            this.n = forks.length;
+            this.forks = forks;
+        }
+        private int left() {
+            return index;
+        }
+        private int right() {
+            return (index + 1) % n;
+        }
+        private boolean isLeftie() {
+            return (index % 2) == 0;
+        }
+        public void getForks() {
+            try {
+                if (isLeftie()) {
+                    forks[right()].acquire();
+                    forks[left()].acquire();
+                } else {
+                    forks[left()].acquire();
+                    forks[right()].acquire();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        public void putForks() {
+            if (isLeftie()) {
+                forks[right()].release();
+                forks[left()].release();
+            } else {
+                forks[left()].release();
+                forks[right()].release();
+            }
+        }
+        public void run() {
+            while (true) {
+                think();
+                getForks();
+                eat();
+                putForks();
+            }
+        }
+        private void think() {
+            try {
+                System.out.println("Filósofo " + this.index + " está pensando");
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        private void eat() {
+            try {
+                System.out.println("Filósofo " + this.index + " está comendo");
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    public static void main(String[] args) {
+        int numFilosofos = 5;
+        Semaphore[] semas = new Semaphore[numFilosofos];
+        for (int i = 0; i < numFilosofos; i++) {
+            semas[i] = new Semaphore(1);
+        }
+        Filosofo[] filos = new Filosofo[numFilosofos];
+        for (int i = 0; i < numFilosofos; i++) {
+            filos[i] = new Filosofo(i, semas);
+        }
+        for (int i = 0; i < numFilosofos; i++) {
+            new Thread(filos[i]).start();
+        }
+    }
 }
